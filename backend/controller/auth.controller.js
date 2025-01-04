@@ -1,6 +1,8 @@
 import { User } from "../models/user.model.js"
 import bcryptjs from "bcryptjs"
 import generateTokenAndSetCookie from "../utils/generateTokenAndSetCookie.js"
+import { sendVerificationEmail } from "../mailtrap/emails.js"
+
 export const signup = async (req, res) => {
   const { name, email, password } = req.body
   const SALT = process.env.SALT
@@ -25,12 +27,14 @@ export const signup = async (req, res) => {
     })
     await user.save() // may ask to make it user.save()
     generateTokenAndSetCookie(res, user._id)
+    await sendVerificationEmail(user.email, verificationToken)
     res.status(201).json({
       success: true,
       message: "User created successfully",
       user: { ...user._doc, password: undefined },
     })
   } catch (error) {
+    console.log(error)
     res.status(500).json({ error: "Internal server error" })
   }
 }
