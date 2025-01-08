@@ -62,7 +62,7 @@ export const verifyEmail = async (req, res) => {
       user: {
         ...user._doc,
         password: undefined,
-      },//now on 1:16:57 and 1:08:37
+      }, //now on 1:16:57 and 1:08:37
     })
   } catch (error) {}
 }
