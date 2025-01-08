@@ -1,7 +1,7 @@
 import { User } from "../models/user.model.js"
 import bcryptjs from "bcryptjs"
 import generateTokenAndSetCookie from "../utils/generateTokenAndSetCookie.js"
-import { sendVerificationEmail } from "../mailtrap/emails.js"
+import { sendVerificationEmail, sendWelcomeEmail } from "../mailtrap/emails.js"
 
 export const signup = async (req, res) => {
   const { name, email, password } = req.body
@@ -64,7 +64,10 @@ export const verifyEmail = async (req, res) => {
         password: undefined,
       }, //now on 1:16:57 and 1:08:37
     })
-  } catch (error) {}
+  } catch (error) {
+    console.log("error in verifyEmail", error)
+    res.status(500).json({ error: "Internal server error" })
+  }
 }
 
 export const signin = async (req, res) => {
