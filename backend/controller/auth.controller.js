@@ -9,6 +9,7 @@ import {
   sendPasswordResetEmail,
   sendResetSuccessEmail,
 } from "../mailtrap/emails.js"
+import verifyToken from "../middleware/verifyToken.js"
 
 export const signup = async (req, res) => {
   const { name, email, password } = req.body
@@ -102,7 +103,7 @@ export const signin = async (req, res) => {
     })
   } catch (error) {
     console.log("error in signin", error)
-    res.status(500).json({ error: "Internal server error" })
+    res.status(500).json({ message: "Internal server error" })
   }
 }
 export const signout = async (req, res) => {
@@ -161,4 +162,15 @@ export const resetPassword = async (req, res) => {
     res.status(400).json({ success: false, message: error.message })
   }
 }
-//i have to make the signup and signin and signout functions
+
+export const checkAuth = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("-password")
+    if (!user) {
+      return res.status(400).json({ message: "User Not Found" })
+    }
+    res.status(200).json({ message: true, user })
+  } catch (error) {
+
+  }
+}

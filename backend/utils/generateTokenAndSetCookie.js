@@ -5,7 +5,6 @@ export const generateTokenAndSetCookie = (res, userId) => {
     expiresIn: "7d",
   })
   res.cookie("token", token, {
-    expires: new Date(Date.now() + 86400000),
     httpOnly: true,
     secre: process.env.NODE_ENV === "production",
     sameSite: "strict",
