@@ -1,7 +1,14 @@
 import { User } from "../models/user.model.js"
 import bcryptjs from "bcryptjs"
+import crypto from "crypto"
+
 import generateTokenAndSetCookie from "../utils/generateTokenAndSetCookie.js"
-import { sendVerificationEmail, sendWelcomeEmail } from "../mailtrap/emails.js"
+import {
+  sendVerificationEmail,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  sendResetSuccessEmail,
+} from "../mailtrap/emails.js"
 
 export const signup = async (req, res) => {
   const { name, email, password } = req.body
@@ -71,9 +78,87 @@ export const verifyEmail = async (req, res) => {
 }
 
 export const signin = async (req, res) => {
-  res.send("Signin")
+  const { email, password } = req.body
+  try {
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({ error: "Invalid credentials" })
+    }
+    const isPasswordMarch = await bcryptjs.compare(password, user.password)
+    if (!isPasswordMarch) {
+      return res.status(400).json({ error: "Invalid credentials" })
+    }
+    generateTokenAndSetCookie(res, user._id)
+    res.status(200).json({
+      success: true,
+      message: "Signin successful",
+    })
+    user.lastLogin = new Date()
+    await user.save()
+    res.status(200).json({
+      success: true,
+      message: "Signin successful",
+      user: { ...user._doc, password: undefined },
+    })
+  } catch (error) {
+    console.log("error in signin", error)
+    res.status(500).json({ error: "Internal server error" })
+  }
 }
 export const signout = async (req, res) => {
-  res.send("Signout")
+  res.clearCookie("token")
+  res.status(200).json({ message: "Signout successfully" })
+}
+
+export const forgetPassword = async (req, res) => {
+  const { email } = req.body
+  try {
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({ error: "User not found" })
+    }
+    const resetToken = crypto.randomBytes(20).toString("hex")
+    const resetTokenExpiresAt = Date.now() + 1 * 60 * 60 * 1000 // 1 hour
+
+    user.resetPasswordToken = resetToken
+    user.resetPasswordExpiresAt = resetTokenExpiresAt
+    await user.save()
+    await sendPasswordResetEmail(
+      user.email,
+      `${process.env.CLIENT_URL}/reset-password/${resetToken}`
+    )
+    res.status(200).json({ message: "Reset password link sent to your email" })
+  } catch (error) {
+    console.log("error in forgetPassword", error)
+    res.status(500).json({ error: "Internal server error" })
+  }
+}
+export const resetPassword = async (req, res) => {
+  const { token } = req.params
+  const { password } = req.body
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiresAt: { $gt: Date.now() },
+    })
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Or Expired Token" })
+    }
+    const hashedPassword = await bcryptjs.hash(password, 10)
+    user.password = hashedPassword
+    user.resetPasswordToken = undefined
+    user.resetPasswordExpiresAt = undefined
+    await user.save()
+
+    await sendResetSuccessEmail(user.email)
+    res
+      .status(200)
+      .json({ success: true, message: "Password Reset Successful!" })
+  } catch (error) {
+    console.log(error)
+    res.status(400).json({ success: false, message: error.message })
+  }
 }
 //i have to make the signup and signin and signout functions
